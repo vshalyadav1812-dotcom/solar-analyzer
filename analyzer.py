@@ -201,11 +201,11 @@ def process_nc_files(filepaths):
     best_score = -1.0
     best_match_mapping = []
     
-    # CREATIVE FIX: Stellar Forest & Irradiance Paradigm Shift
-    # A true galaxy spectrum from SDSS is low-irradiance and contains a few dozen lines.
-    # The Sun (TSIS data) has hundreds of lines and high irradiance. We use these physical 
-    # anchors to explicitly lock the engine to the resting frame, eliminating spurious matches.
-    if len(peaks_abs) > 300 or mean_irrad > 2.0:
+    # CREATIVE FIX: High-Resolution Stellar Lock
+    # SDSS Galaxy spectra typically have ~3,000 to ~4,500 data points.
+    # Solar/Stellar high-resolution data (like TSIS) have > 50,000 data points and dense absorption manifolds.
+    # We use this physical data modality to immediately lock the engine to the resting frame for local stars.
+    if len(wave_down) > 20000 or len(peaks_abs) > 500:
         search_range = [0.0]
     else:
         search_range = list(np.arange(max(-0.01, candidate_z - 0.02), min(7.0, candidate_z + 0.02), 0.0002))
