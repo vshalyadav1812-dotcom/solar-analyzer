@@ -201,8 +201,15 @@ def process_nc_files(filepaths):
     best_score = -1.0
     best_match_mapping = []
     
-    search_range = list(np.arange(max(-0.01, candidate_z - 0.02), min(7.0, candidate_z + 0.02), 0.0002))
-    search_range.append(0.0)
+    # CREATIVE FIX: Stellar Forest & Irradiance Paradigm Shift
+    # A true galaxy spectrum from SDSS is low-irradiance and contains a few dozen lines.
+    # The Sun (TSIS data) has hundreds of lines and high irradiance. We use these physical 
+    # anchors to explicitly lock the engine to the resting frame, eliminating spurious matches.
+    if len(peaks_abs) > 300 or mean_irrad > 2.0:
+        search_range = [0.0]
+    else:
+        search_range = list(np.arange(max(-0.01, candidate_z - 0.02), min(7.0, candidate_z + 0.02), 0.0002))
+        search_range.append(0.0)
 
     for trial_z in search_range:
         current_score = 0.0
