@@ -201,9 +201,8 @@ def process_nc_files(filepaths):
     best_score = -1.0
     best_match_mapping = []
     
-    search_range = np.arange(max(-0.01, candidate_z - 0.02), min(7.0, candidate_z + 0.02), 0.0002)
-    if candidate_z == 0.0 and not z_candidates:
-        search_range = [0.0]
+    search_range = list(np.arange(max(-0.01, candidate_z - 0.02), min(7.0, candidate_z + 0.02), 0.0002))
+    search_range.append(0.0)
 
     for trial_z in search_range:
         current_score = 0.0
