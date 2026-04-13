@@ -235,6 +235,13 @@ def process_nc_files(filepaths):
                     match_score = strength * (2.0 - best_dist)
                     if p_type == "emission": match_score *= 1.5
                     
+                    # CREATIVE FIX: 'Resting-Frame Prior'
+                    # Due to dense line forests in high-res solar spectra, random shifts can coincidentally 
+                    # align noise with the limited known lines list. 
+                    # We heavily weight the resting frame so true local features overpower random alignments.
+                    if abs(trial_z) < 1e-5:
+                        match_score *= 10.0
+                        
                     z_implied = (w_obs / best_kl["wave"]) - 1
                     matched_this_z.append((p, best_kl, w_obs, z_implied, strength, p_type))
                     current_score += match_score
