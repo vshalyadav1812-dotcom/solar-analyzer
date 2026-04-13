@@ -5,3 +5,5 @@ netCDF4
 scipy
 pandas
 python-multipart
+astropy
+numpy
