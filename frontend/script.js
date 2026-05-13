@@ -17,6 +17,7 @@ const imageSection = document.getElementById('image-section');
 let currentWaveMin = 0;
 let currentWaveMax = 0;
 let baseSpectrumTrace = null;
+let currentImageData = null;
 
 ['dragover', 'dragleave', 'drop'].forEach(evt => {
     dropZone.addEventListener(evt, e => e.preventDefault(), false);
@@ -272,37 +273,98 @@ function renderImageResults(data) {
     resultsSection.classList.add('hidden');
     imageSection.classList.remove('hidden');
 
-    // Plotly Heatmap
+    currentImageData = data.image.z;
+    
+    // Initial Render
+    updateDS9(true);
+
+    // Header Properties (now grouped)
+    const propsDiv = document.getElementById('image-properties');
+    propsDiv.innerHTML = '';
+    
+    for (const [groupName, groupData] of Object.entries(data.properties)) {
+        const groupContainer = document.createElement('div');
+        groupContainer.style.background = 'rgba(0,0,0,0.02)';
+        groupContainer.style.padding = '1rem';
+        groupContainer.style.borderRadius = '12px';
+        groupContainer.style.border = '1px solid var(--panel-border)';
+        
+        groupContainer.innerHTML = `<h4 style="margin-bottom: 0.75rem; font-family: var(--font-heading); color: var(--accent-glow); font-size: 1.05rem;">${groupName}</h4>`;
+        
+        const list = document.createElement('div');
+        list.className = 'property-list';
+        
+        for (const [key, value] of Object.entries(groupData)) {
+            const propItem = document.createElement('div');
+            propItem.className = 'prop-item';
+            propItem.innerHTML = `<span>${key}</span><strong style="text-align: right; max-width: 60%; word-break: break-all;">${value}</strong>`;
+            list.appendChild(propItem);
+        }
+        groupContainer.appendChild(list);
+        propsDiv.appendChild(groupContainer);
+    }
+}
+
+function updateDS9(isInitial = false) {
+    if (!currentImageData) return;
+    
+    const colormap = document.getElementById('ds9-colormap').value;
+    const stretch = document.getElementById('ds9-stretch').value;
+    
+    let stretchedZ = currentImageData;
+    
+    if (stretch === 'Log') {
+        let minZ = Infinity;
+        for (let r=0; r<currentImageData.length; r++) {
+            for (let c=0; c<currentImageData[r].length; c++) {
+                if (currentImageData[r][c] > 0 && currentImageData[r][c] < minZ) minZ = currentImageData[r][c];
+            }
+        }
+        if (minZ === Infinity) minZ = 1e-9;
+        
+        stretchedZ = currentImageData.map(row => row.map(v => v > 0 ? Math.log10(v) : Math.log10(minZ)));
+    } else if (stretch === 'Sqrt') {
+        stretchedZ = currentImageData.map(row => row.map(v => v > 0 ? Math.sqrt(v) : 0));
+    }
+    
     const trace = {
-        z: data.image.z,
+        z: stretchedZ,
         type: 'heatmap',
-        colorscale: 'Viridis',
+        colorscale: colormap,
         colorbar: {
-            title: 'Intensity',
+            title: stretch === 'Linear' ? 'Intensity' : `Intensity (${stretch})`,
             titlefont: {color: '#9CA3AF'},
             tickfont: {color: '#9CA3AF'}
         }
     };
-
-    const layout = {
-        paper_bgcolor: 'rgba(0,0,0,0)',
-        plot_bgcolor: 'rgba(0,0,0,0)',
-        font: { color: '#9CA3AF', family: 'Inter' },
-        margin: { t: 20, r: 20, b: 40, l: 60 },
-        xaxis: { title: 'X Pixel', gridcolor: 'rgba(255,255,255,0.05)' },
-        yaxis: { title: 'Y Pixel', gridcolor: 'rgba(255,255,255,0.05)', scaleanchor: 'x' }
-    };
-
-    Plotly.newPlot('image-plot', [trace], layout, {responsive: true});
-
-    // Header Properties
-    const propsDiv = document.getElementById('image-properties');
-    propsDiv.innerHTML = '';
     
-    for (const [key, value] of Object.entries(data.properties)) {
-        const propItem = document.createElement('div');
-        propItem.className = 'prop-item';
-        propItem.innerHTML = `<span>${key}</span><strong>${value}</strong>`;
-        propsDiv.appendChild(propItem);
+    if (isInitial === true) {
+        const layout = {
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            font: { color: '#9CA3AF', family: 'Inter' },
+            margin: { t: 20, r: 20, b: 40, l: 60 },
+            xaxis: { title: 'X Pixel', gridcolor: 'rgba(255,255,255,0.05)' },
+            yaxis: { title: 'Y Pixel', gridcolor: 'rgba(255,255,255,0.05)', scaleanchor: 'x' },
+            dragmode: 'pan'
+        };
+        
+        Plotly.newPlot('image-plot', [trace], layout, {responsive: true, scrollZoom: true, displayModeBar: true});
+        
+        // Pixel Probe Hover Event
+        const myPlot = document.getElementById('image-plot');
+        myPlot.on('plotly_hover', function(data){
+            const pt = data.points[0];
+            const x = pt.x;
+            const y = pt.y;
+            const originalVal = currentImageData[y] && currentImageData[y][x] !== undefined ? currentImageData[y][x] : pt.z;
+            document.getElementById('pixel-probe').innerHTML = `<span>X: ${x} | Y: ${y}</span><span>Value: ${originalVal.toExponential(4)}</span><span>Probe Active</span>`;
+        });
+        myPlot.on('plotly_unhover', function(data){
+            document.getElementById('pixel-probe').innerHTML = `<span>X: -- | Y: --</span><span>Value: --</span><span>Probe Ready</span>`;
+        });
+    } else {
+        const update = { z: [stretchedZ], colorscale: colormap, 'colorbar.title': trace.colorbar.title };
+        Plotly.restyle('image-plot', update);
     }
 }

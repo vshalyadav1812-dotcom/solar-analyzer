@@ -65,16 +65,37 @@ def process_nc_files(filepaths):
                     dec = img_header.get('DEC', primary_header.get('DEC', img_header.get('CRVAL2', primary_header.get('CRVAL2', 'Unknown'))))
                     
                     freq = img_header.get('RESTFRQ', primary_header.get('RESTFRQ', img_header.get('FREQ', primary_header.get('FREQ', 'Unknown'))))
+                    freq_str = "Unknown"
+                    regime = "Unknown"
                     if freq != 'Unknown':
                         try:
-                            freq = f"{float(freq) / 1e9:.3f} GHz"
+                            f_hz = float(freq)
+                            freq_str = f"{f_hz / 1e9:.3f} GHz"
+                            lam_m = 299792458.0 / f_hz
+                            lam_nm = lam_m * 1e9
+                            
+                            if lam_m >= 1e-3: regime = "Radio"
+                            elif lam_m >= 100e-6: regime = "Microwave"
+                            elif lam_nm >= 700: regime = "Infrared (IR)"
+                            elif lam_nm >= 400: regime = "Optical"
+                            elif lam_nm >= 10: regime = "Ultraviolet (UV)"
+                            else: regime = "X-Ray / Gamma"
                         except:
-                            pass
+                            freq_str = str(freq)
                             
                     obj = img_header.get('OBJECT', primary_header.get('OBJECT', 'Unknown'))
                     telescope = img_header.get('TELESCOP', primary_header.get('TELESCOP', 'Unknown'))
                     instrument = img_header.get('INSTRUME', primary_header.get('INSTRUME', 'Unknown'))
                     date_obs = img_header.get('DATE-OBS', primary_header.get('DATE-OBS', 'Unknown'))
+                    
+                    ctype1 = img_header.get('CTYPE1', primary_header.get('CTYPE1', 'Unknown'))
+                    cunit1 = img_header.get('CUNIT1', primary_header.get('CUNIT1', 'Unknown'))
+                    cdelt1 = img_header.get('CDELT1', primary_header.get('CDELT1', 'Unknown'))
+                    bunit = img_header.get('BUNIT', primary_header.get('BUNIT', 'Unknown'))
+                    
+                    d_min = float(np.min(img_data))
+                    d_max = float(np.max(img_data))
+                    d_mean = float(np.mean(img_data))
                     
                     return {
                         "type": "image",
@@ -82,13 +103,32 @@ def process_nc_files(filepaths):
                             "z": img_data.tolist()
                         },
                         "properties": {
-                            "Object": str(obj),
-                            "Telescope / Instrument": f"{telescope} / {instrument}",
-                            "Cosmological Address (RA, DEC)": f"{ra}, {dec}",
-                            "Frequency / Rest Freq": str(freq),
-                            "Date Observed": str(date_obs),
-                            "Original Shape": str(shape),
-                            "Header Keys": len(img_header)
+                            "Observation": {
+                                "Object": str(obj),
+                                "Telescope": str(telescope),
+                                "Instrument": str(instrument),
+                                "Date": str(date_obs)
+                            },
+                            "WCS": {
+                                "RA / CRVAL1": str(ra),
+                                "DEC / CRVAL2": str(dec),
+                                "CTYPE": str(ctype1),
+                                "CUNIT": str(cunit1)
+                            },
+                            "Spectral": {
+                                "Frequency": freq_str,
+                                "Regime": regime
+                            },
+                            "Image": {
+                                "Original Shape": str(shape),
+                                "Pixel Scale (CDELT)": str(cdelt1),
+                                "Flux Units (BUNIT)": str(bunit)
+                            },
+                            "Statistics": {
+                                "Data Min": f"{d_min:.4e}",
+                                "Data Max": f"{d_max:.4e}",
+                                "Mean": f"{d_mean:.4e}"
+                            }
                         }
                     }
         except Exception as e:
