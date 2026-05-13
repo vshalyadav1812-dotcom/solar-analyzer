@@ -14,7 +14,9 @@ class FITSImageWCS(BaseModel):
     pc: List[List[float]]
 
 class FITSImageData(BaseModel):
-    z: List[List[Optional[float]]]
+    b64_z: str
+    width: int
+    height: int
     p5: float
     p99: float
     step_x: int
@@ -80,7 +82,7 @@ def process_nc_files(filepaths):
                         cube_warning = f"{img_data.ndim}D cube detected. Showing first slice only."
                     while img_data.ndim > 2:
                         img_data = img_data[0]
-                    max_dim = 600
+                    max_dim = 1200
                     if img_data.shape[0] > max_dim or img_data.shape[1] > max_dim:
                         step_y = max(1, img_data.shape[0] // max_dim)
                         step_x = max(1, img_data.shape[1] // max_dim)
@@ -136,8 +138,10 @@ def process_nc_files(filepaths):
                     for k, v in img_header.items():
                         if str(k).strip(): raw_header[str(k)] = str(v)
                     
-                    z_list = img_data.tolist()
-                    z_clean = [[None if np.isnan(val) or np.isinf(val) else val for val in row] for row in z_list]
+                    import base64
+                    img_float32 = img_data.astype(np.float32)
+                    b64_z = base64.b64encode(img_float32.tobytes()).decode('utf-8')
+                    current_h, current_w = img_float32.shape
                     
                     wcs_params = None
                     try:
@@ -162,7 +166,7 @@ def process_nc_files(filepaths):
                     response_obj = FITSImageResponse(
                         schema_version="2.3",
                         cube_warning=cube_warning,
-                        image=FITSImageData(z=z_clean, p5=p5, p99=p99, step_x=step_x, step_y=step_y),
+                        image=FITSImageData(b64_z=b64_z, width=current_w, height=current_h, p5=p5, p99=p99, step_x=step_x, step_y=step_y),
                         raw_header=raw_header,
                         wcs=FITSImageWCS(**wcs_params) if wcs_params else None,
                         properties={

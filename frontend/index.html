@@ -181,6 +181,18 @@
                             </select>
                         </div>
                     </div>
+                    
+                    <div class="glass-panel" style="margin-top: 1rem; padding: 1rem;">
+                        <h3 style="font-family: var(--font-heading); color: var(--accent-glow); margin-bottom: 0.5rem;">Aperture Statistics</h3>
+                        <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.5rem;">Draw a region (circle/rect) on the image to compute local statistics.</p>
+                        <div id="aperture-stats" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-family: monospace; font-size: 0.9rem;">
+                            <div>Mean: <span id="ap-mean">--</span></div>
+                            <div>RMS: <span id="ap-rms">--</span></div>
+                            <div>Sum: <span id="ap-sum">--</span></div>
+                            <div>Max: <span id="ap-max">--</span></div>
+                        </div>
+                    </div>
+
                     <div id="pixel-probe" style="background: #0b0b0c; color: #10B981; padding: 0.5rem 1rem; border-radius: 8px 8px 0 0; font-family: monospace; font-size: 0.9rem; display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1);">
                         <span>X: -- | Y: --</span>
                         <span>Value: --</span>
@@ -242,6 +254,6 @@
 
     </main>
 
-    <script src="/static/script.js?v=2.7"></script>
+    <script src="/static/script.js?v=2.8"></script>
 </body>
 </html>

@@ -273,6 +273,28 @@ document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () =>
     if(t.textContent === 'Model Sandbox') updateSandbox();
 }));
 
+function decodeFloat32Base64(b64, width, height) {
+    const binaryString = window.atob(b64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+    }
+    const floatArray = new Float32Array(bytes.buffer);
+    
+    const z2d = [];
+    let idx = 0;
+    for (let r = 0; r < height; r++) {
+        const row = [];
+        for (let c = 0; c < width; c++) {
+            const val = floatArray[idx++];
+            row.push(isNaN(val) ? null : val);
+        }
+        z2d.push(row);
+    }
+    return z2d;
+}
+
 function renderImageResults(data) {
     loading.classList.add('hidden');
     resultsSection.classList.add('hidden');
@@ -282,7 +304,7 @@ function renderImageResults(data) {
         alert("Scientific Warning: " + data.cube_warning);
     }
 
-    currentImageData = data.image.z;
+    currentImageData = decodeFloat32Base64(data.image.b64_z, data.image.width, data.image.height);
     currentImageP5 = data.image.p5;
     currentImageP99 = data.image.p99;
     currentStepX = data.image.step_x;
@@ -401,13 +423,34 @@ function updateDS9(isInitial = false) {
             margin: { t: 20, r: 20, b: 40, l: 60 },
             xaxis: { title: 'X Pixel', gridcolor: 'rgba(255,255,255,0.05)' },
             yaxis: { title: 'Y Pixel', gridcolor: 'rgba(255,255,255,0.05)', scaleanchor: 'x' },
-            dragmode: 'pan'
+            dragmode: 'pan',
+            newshape: {line: {color: '#e11d74', width: 2}}
         };
         
-        Plotly.newPlot('image-plot', [trace], layout, {responsive: true, scrollZoom: true, displayModeBar: true});
+        Plotly.newPlot('image-plot', [trace], layout, {
+            responsive: true, 
+            scrollZoom: true, 
+            displayModeBar: true,
+            modeBarButtonsToAdd: ['drawrect', 'drawcircle', 'eraseshape']
+        });
         
         // Pixel Probe Hover Event
         const myPlot = document.getElementById('image-plot');
+        
+        myPlot.on('plotly_relayout', function(eventdata){
+            if (eventdata.shapes || Object.keys(eventdata).some(k => k.startsWith('shapes'))) {
+                const layout = myPlot.layout;
+                if (layout.shapes && layout.shapes.length > 0) {
+                    const shape = layout.shapes[layout.shapes.length - 1]; // latest shape
+                    computeApertureStats(shape);
+                } else {
+                    document.getElementById('ap-mean').textContent = '--';
+                    document.getElementById('ap-rms').textContent = '--';
+                    document.getElementById('ap-sum').textContent = '--';
+                    document.getElementById('ap-max').textContent = '--';
+                }
+            }
+        });
         myPlot.on('plotly_hover', function(data){
             const pt = data.points[0];
             const x = Math.round(pt.x);
@@ -453,5 +496,68 @@ function updateDS9(isInitial = false) {
             update.zmax = null;
         }
         Plotly.restyle('image-plot', update);
+    }
+}
+
+function computeApertureStats(shape) {
+    if (!currentImageData || !currentImageData.length) return;
+    
+    // Convert plot coords (0-indexed pixels)
+    const x0 = Math.min(shape.x0, shape.x1);
+    const x1 = Math.max(shape.x0, shape.x1);
+    const y0 = Math.min(shape.y0, shape.y1);
+    const y1 = Math.max(shape.y0, shape.y1);
+    
+    let sum = 0;
+    let count = 0;
+    let max = -Infinity;
+    let sqSum = 0;
+    
+    // Bounds check
+    const startY = Math.max(0, Math.floor(y0));
+    const endY = Math.min(currentImageData.length - 1, Math.ceil(y1));
+    const startX = Math.max(0, Math.floor(x0));
+    const endX = Math.min(currentImageData[0].length - 1, Math.ceil(x1));
+    
+    const rX = (x1 - x0) / 2;
+    const rY = (y1 - y0) / 2;
+    const cX = x0 + rX;
+    const cY = y0 + rY;
+
+    for (let r = startY; r <= endY; r++) {
+        for (let c = startX; c <= endX; c++) {
+            let inside = false;
+            if (shape.type === 'rect') {
+                inside = true;
+            } else if (shape.type === 'circle') {
+                const dx = (c - cX) / rX;
+                const dy = (r - cY) / rY;
+                if (dx*dx + dy*dy <= 1.0) inside = true;
+            }
+            
+            if (inside) {
+                const val = currentImageData[r][c];
+                if (val !== null && !isNaN(val)) {
+                    sum += val;
+                    sqSum += val * val;
+                    if (val > max) max = val;
+                    count++;
+                }
+            }
+        }
+    }
+    
+    if (count > 0) {
+        const mean = sum / count;
+        const rms = Math.sqrt(sqSum / count);
+        document.getElementById('ap-mean').textContent = mean.toExponential(3);
+        document.getElementById('ap-rms').textContent = rms.toExponential(3);
+        document.getElementById('ap-sum').textContent = sum.toExponential(3);
+        document.getElementById('ap-max').textContent = max.toExponential(3);
+    } else {
+        document.getElementById('ap-mean').textContent = 'N/A';
+        document.getElementById('ap-rms').textContent = 'N/A';
+        document.getElementById('ap-sum').textContent = 'N/A';
+        document.getElementById('ap-max').textContent = 'N/A';
     }
 }
