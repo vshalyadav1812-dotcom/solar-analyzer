@@ -23,6 +23,7 @@ let currentImageP99 = null;
 let currentStepX = 1;
 let currentStepY = 1;
 let currentWCS = null;
+let currentBunit = "";
 
 ['dragover', 'dragleave', 'drop'].forEach(evt => {
     dropZone.addEventListener(evt, e => e.preventDefault(), false);
@@ -310,6 +311,7 @@ function renderImageResults(data) {
     currentStepX = data.image.step_x;
     currentStepY = data.image.step_y;
     currentWCS = data.wcs;
+    currentBunit = data.properties.Image && data.properties.Image["Flux Units (BUNIT)"] !== 'Unknown' ? data.properties.Image["Flux Units (BUNIT)"] : "";
     
     // Initial Render
     updateDS9(true);
@@ -473,11 +475,11 @@ function updateDS9(isInitial = false) {
                 
                 const ra = currentWCS.crval[0] + pc1 * currentWCS.cdelt[0];
                 const dec = currentWCS.crval[1] + pc2 * currentWCS.cdelt[1];
-                
                 raDecStr = `RA: ${ra.toFixed(5)} | DEC: ${dec.toFixed(5)}`;
             }
             
-            document.getElementById('pixel-probe').innerHTML = `<span>X: ${x} | Y: ${y}</span><span>${raDecStr}</span><span>Value: ${valStr}</span>`;
+            const u = currentBunit ? ` ${currentBunit}` : '';
+            document.getElementById('pixel-probe').innerHTML = `<span>X: ${x} | Y: ${y}</span><span>${raDecStr}</span><span>Value: ${valStr}${u}</span>`;
         });
         myPlot.on('plotly_unhover', function(data){
             document.getElementById('pixel-probe').innerHTML = `<span>X: -- | Y: --</span><span>Value: --</span><span>Probe Ready</span>`;
@@ -497,6 +499,17 @@ function updateDS9(isInitial = false) {
         }
         Plotly.restyle('image-plot', update);
     }
+}
+
+function clearRegions() {
+    const myPlot = document.getElementById('image-plot');
+    if (myPlot && myPlot.layout) {
+        Plotly.relayout('image-plot', {shapes: []});
+    }
+    document.getElementById('ap-mean').textContent = '--';
+    document.getElementById('ap-rms').textContent = '--';
+    document.getElementById('ap-sum').textContent = '--';
+    document.getElementById('ap-max').textContent = '--';
 }
 
 function computeApertureStats(shape) {
@@ -550,10 +563,11 @@ function computeApertureStats(shape) {
     if (count > 0) {
         const mean = sum / count;
         const rms = Math.sqrt(sqSum / count);
-        document.getElementById('ap-mean').textContent = mean.toExponential(3);
-        document.getElementById('ap-rms').textContent = rms.toExponential(3);
-        document.getElementById('ap-sum').textContent = sum.toExponential(3);
-        document.getElementById('ap-max').textContent = max.toExponential(3);
+        const u = currentBunit ? ` ${currentBunit}` : '';
+        document.getElementById('ap-mean').textContent = mean.toExponential(3) + u;
+        document.getElementById('ap-rms').textContent = rms.toExponential(3) + u;
+        document.getElementById('ap-sum').textContent = sum.toExponential(3) + u;
+        document.getElementById('ap-max').textContent = max.toExponential(3) + u;
     } else {
         document.getElementById('ap-mean').textContent = 'N/A';
         document.getElementById('ap-rms').textContent = 'N/A';
