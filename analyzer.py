@@ -46,8 +46,11 @@ def process_nc_files(filepaths):
                                 img_header = hdu.header
                                 is_image = True
                                 break
+                cube_warning = None
                 if is_image:
                     shape = img_data.shape
+                    if img_data.ndim > 2:
+                        cube_warning = f"{img_data.ndim}D cube detected. Showing first slice only."
                     while img_data.ndim > 2:
                         img_data = img_data[0]
                     max_dim = 600
@@ -55,8 +58,6 @@ def process_nc_files(filepaths):
                         step_y = max(1, img_data.shape[0] // max_dim)
                         step_x = max(1, img_data.shape[1] // max_dim)
                         img_data = img_data[::step_y, ::step_x]
-                    
-                    img_data = np.nan_to_num(img_data, nan=0.0)
                     
                     # Extract header properties (check both current HDU and Primary HDU)
                     primary_header = hdul[0].header
@@ -74,11 +75,12 @@ def process_nc_files(filepaths):
                             lam_m = 299792458.0 / f_hz
                             lam_nm = lam_m * 1e9
                             
-                            if lam_m >= 1e-3: regime = "Radio"
-                            elif lam_m >= 100e-6: regime = "Microwave"
-                            elif lam_nm >= 700: regime = "Infrared (IR)"
-                            elif lam_nm >= 400: regime = "Optical"
-                            elif lam_nm >= 10: regime = "Ultraviolet (UV)"
+                            if lam_m > 1e-1: regime = "Radio"
+                            elif lam_m > 1e-3: regime = "Microwave"
+                            elif lam_m > 1e-4: regime = "Submillimeter / Far-IR"
+                            elif lam_nm > 700: regime = "Infrared (IR)"
+                            elif lam_nm > 400: regime = "Optical"
+                            elif lam_nm > 10: regime = "Ultraviolet (UV)"
                             else: regime = "X-Ray / Gamma"
                         except:
                             freq_str = str(freq)
@@ -93,9 +95,13 @@ def process_nc_files(filepaths):
                     cdelt1 = img_header.get('CDELT1', primary_header.get('CDELT1', 'Unknown'))
                     bunit = img_header.get('BUNIT', primary_header.get('BUNIT', 'Unknown'))
                     
-                    d_min = float(np.min(img_data))
-                    d_max = float(np.max(img_data))
-                    d_mean = float(np.mean(img_data))
+                    d_min = float(np.nanmin(img_data))
+                    d_max = float(np.nanmax(img_data))
+                    d_mean = float(np.nanmean(img_data))
+                    
+                    p5 = float(np.nanpercentile(img_data, 5))
+                    p95 = float(np.nanpercentile(img_data, 95))
+                    p99 = float(np.nanpercentile(img_data, 99))
                     
                     raw_header = {}
                     for k, v in primary_header.items():
@@ -103,10 +109,17 @@ def process_nc_files(filepaths):
                     for k, v in img_header.items():
                         if str(k).strip(): raw_header[str(k)] = str(v)
                     
+                    z_list = img_data.tolist()
+                    z_clean = [[None if np.isnan(val) or np.isinf(val) else val for val in row] for row in z_list]
+                    
                     return {
+                        "schema_version": "2.2",
                         "type": "image",
+                        "cube_warning": cube_warning,
                         "image": {
-                            "z": img_data.tolist()
+                            "z": z_clean,
+                            "p5": p5,
+                            "p99": p99
                         },
                         "raw_header": raw_header,
                         "properties": {
@@ -133,8 +146,11 @@ def process_nc_files(filepaths):
                             },
                             "Statistics": {
                                 "Data Min": f"{d_min:.4e}",
-                                "Data Max": f"{d_max:.4e}",
-                                "Mean": f"{d_mean:.4e}"
+                                "P5": f"{p5:.4e}",
+                                "Mean": f"{d_mean:.4e}",
+                                "P95": f"{p95:.4e}",
+                                "P99": f"{p99:.4e}",
+                                "Data Max": f"{d_max:.4e}"
                             }
                         }
                     }

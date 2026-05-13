@@ -18,6 +18,8 @@ let currentWaveMin = 0;
 let currentWaveMax = 0;
 let baseSpectrumTrace = null;
 let currentImageData = null;
+let currentImageP5 = null;
+let currentImageP99 = null;
 
 ['dragover', 'dragleave', 'drop'].forEach(evt => {
     dropZone.addEventListener(evt, e => e.preventDefault(), false);
@@ -273,7 +275,13 @@ function renderImageResults(data) {
     resultsSection.classList.add('hidden');
     imageSection.classList.remove('hidden');
 
+    if (data.cube_warning) {
+        alert("Scientific Warning: " + data.cube_warning);
+    }
+
     currentImageData = data.image.z;
+    currentImageP5 = data.image.p5;
+    currentImageP99 = data.image.p99;
     
     // Initial Render
     updateDS9(true);
@@ -362,6 +370,7 @@ function updateDS9(isInitial = false) {
     const trace = {
         z: stretchedZ,
         type: 'heatmap',
+        zsmooth: false,
         colorscale: colormap,
         colorbar: {
             title: stretch === 'Linear' ? 'Intensity' : `Intensity (${stretch})`,
@@ -369,6 +378,11 @@ function updateDS9(isInitial = false) {
             tickfont: {color: '#9CA3AF'}
         }
     };
+    
+    if (stretch === 'Linear' && currentImageP5 !== undefined && currentImageP99 !== undefined) {
+        trace.zmin = currentImageP5;
+        trace.zmax = currentImageP99;
+    }
     
     if (isInitial === true) {
         const layout = {
@@ -396,7 +410,18 @@ function updateDS9(isInitial = false) {
             document.getElementById('pixel-probe').innerHTML = `<span>X: -- | Y: --</span><span>Value: --</span><span>Probe Ready</span>`;
         });
     } else {
-        const update = { z: [stretchedZ], colorscale: colormap, 'colorbar.title': trace.colorbar.title };
+        const update = { 
+            z: [stretchedZ], 
+            colorscale: colormap, 
+            'colorbar.title': trace.colorbar.title 
+        };
+        if (stretch === 'Linear' && currentImageP5 !== undefined) {
+            update.zmin = trace.zmin;
+            update.zmax = trace.zmax;
+        } else {
+            update.zmin = null;
+            update.zmax = null;
+        }
         Plotly.restyle('image-plot', update);
     }
 }
