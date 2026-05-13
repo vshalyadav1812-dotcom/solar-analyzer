@@ -29,6 +29,70 @@ KNOWN_LINES = [
 speed_of_light_km_s = 299792.458
 
 def process_nc_files(filepaths):
+    # --- ADDED: Check for FITS Image (DS9-like view) ---
+    if len(filepaths) == 1 and (filepaths[0].lower().endswith('.fits') or filepaths[0].lower().endswith('.fit')):
+        from astropy.io import fits
+        try:
+            with fits.open(filepaths[0]) as hdul:
+                is_image = False
+                img_data = None
+                img_header = None
+                for hdu in hdul:
+                    if not isinstance(hdu, fits.BinTableHDU) and not isinstance(hdu, fits.TableHDU):
+                        if hdu.data is not None and hasattr(hdu.data, 'shape'):
+                            sq_data = np.squeeze(hdu.data)
+                            if sq_data.ndim >= 2 and sq_data.shape[0] > 1 and sq_data.shape[1] > 1:
+                                img_data = sq_data
+                                img_header = hdu.header
+                                is_image = True
+                                break
+                if is_image:
+                    shape = img_data.shape
+                    while img_data.ndim > 2:
+                        img_data = img_data[0]
+                    max_dim = 600
+                    if img_data.shape[0] > max_dim or img_data.shape[1] > max_dim:
+                        step_y = max(1, img_data.shape[0] // max_dim)
+                        step_x = max(1, img_data.shape[1] // max_dim)
+                        img_data = img_data[::step_y, ::step_x]
+                    
+                    img_data = np.nan_to_num(img_data, nan=0.0)
+                    
+                    # Extract header properties
+                    ra = img_header.get('RA', img_header.get('CRVAL1', 'Unknown'))
+                    dec = img_header.get('DEC', img_header.get('CRVAL2', 'Unknown'))
+                    
+                    freq = img_header.get('RESTFRQ', img_header.get('FREQ', 'Unknown'))
+                    if freq != 'Unknown':
+                        try:
+                            freq = f"{float(freq) / 1e9:.3f} GHz"
+                        except:
+                            pass
+                            
+                    obj = img_header.get('OBJECT', 'Unknown')
+                    telescope = img_header.get('TELESCOP', 'Unknown')
+                    instrument = img_header.get('INSTRUME', 'Unknown')
+                    date_obs = img_header.get('DATE-OBS', 'Unknown')
+                    
+                    return {
+                        "type": "image",
+                        "image": {
+                            "z": img_data.tolist()
+                        },
+                        "properties": {
+                            "Object": str(obj),
+                            "Telescope / Instrument": f"{telescope} / {instrument}",
+                            "Cosmological Address (RA, DEC)": f"{ra}, {dec}",
+                            "Frequency / Rest Freq": str(freq),
+                            "Date Observed": str(date_obs),
+                            "Original Shape": str(shape),
+                            "Header Keys": len(img_header)
+                        }
+                    }
+        except Exception as e:
+            print("Image processing error:", e)
+            pass # Fall back to spectrum processing if image extraction fails
+
     wave_arrays = []
     irrad_arrays = []
     

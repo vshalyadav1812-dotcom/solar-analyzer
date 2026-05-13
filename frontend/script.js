@@ -11,6 +11,7 @@ const dropZone = document.getElementById('drop-zone');
 const fileInput = document.getElementById('file-input');
 const loading = document.getElementById('loading');
 const resultsSection = document.getElementById('results-section');
+const imageSection = document.getElementById('image-section');
 
 // Global state for model querying
 let currentWaveMin = 0;
@@ -67,7 +68,11 @@ async function handleFiles(fileList) {
         }
         if (data.error) throw new Error(data.error);
 
-        renderResults(data);
+        if (data.type === 'image') {
+            renderImageResults(data);
+        } else {
+            renderResults(data);
+        }
 
     } catch (error) {
         alert(`Analysis Error: ${error.message}`);
@@ -79,6 +84,7 @@ async function handleFiles(fileList) {
 
 function renderResults(data) {
     loading.classList.add('hidden');
+    imageSection.classList.add('hidden');
     resultsSection.classList.remove('hidden');
 
     // Store state
@@ -255,3 +261,43 @@ sliderG.addEventListener('change', updateSandbox);
 document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
     if(t.textContent === 'Model Sandbox') updateSandbox();
 }));
+
+function renderImageResults(data) {
+    loading.classList.add('hidden');
+    resultsSection.classList.add('hidden');
+    imageSection.classList.remove('hidden');
+
+    // Plotly Heatmap
+    const trace = {
+        z: data.image.z,
+        type: 'heatmap',
+        colorscale: 'Viridis',
+        colorbar: {
+            title: 'Intensity',
+            titlefont: {color: '#9CA3AF'},
+            tickfont: {color: '#9CA3AF'}
+        }
+    };
+
+    const layout = {
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        font: { color: '#9CA3AF', family: 'Inter' },
+        margin: { t: 20, r: 20, b: 40, l: 60 },
+        xaxis: { title: 'X Pixel', gridcolor: 'rgba(255,255,255,0.05)' },
+        yaxis: { title: 'Y Pixel', gridcolor: 'rgba(255,255,255,0.05)', scaleanchor: 'x' }
+    };
+
+    Plotly.newPlot('image-plot', [trace], layout, {responsive: true});
+
+    // Header Properties
+    const propsDiv = document.getElementById('image-properties');
+    propsDiv.innerHTML = '';
+    
+    for (const [key, value] of Object.entries(data.properties)) {
+        const propItem = document.createElement('div');
+        propItem.className = 'prop-item';
+        propItem.innerHTML = `<span>${key}</span><strong>${value}</strong>`;
+        propsDiv.appendChild(propItem);
+    }
+}

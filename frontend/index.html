@@ -156,7 +156,27 @@
                         </table>
                     </div>
                 </div>
+            </section>
 
+            <!-- FITS IMAGE SECTION -->
+            <section id="image-section" class="results-grid hidden">
+                <div class="chart-container glass-panel fade-in span-full">
+                    <div class="chart-header">
+                        <h3>FITS Image Viewer (DS9-like)</h3>
+                        <span class="legend-badge">Interactive Heatmap</span>
+                    </div>
+                    <div id="image-plot" style="width:100%; height:600px;"></div>
+                </div>
+
+                <div class="info-card glass-panel fade-in delay-1 span-full">
+                    <div class="card-header">
+                        <div class="icon properties"></div>
+                        <h3>Cosmological & Header Properties</h3>
+                    </div>
+                    <div class="card-content property-list" id="image-properties">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
             </section>
         </div>
 
