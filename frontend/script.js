@@ -101,8 +101,8 @@ function renderResults(data) {
         x: waveArray,
         y: data?.spectrum?.irradiance || [],
         mode: 'lines',
-        line: { color: '#ffffff', width: 1.2 },
-        name: 'Observation' // Base is white for contrast against shading
+        line: { color: '#1f2937', width: 1.5 },
+        name: 'Observation'
     };
 
     // Plotly layout with Shaded Regions
@@ -123,10 +123,10 @@ function renderResults(data) {
     const layout = {
         paper_bgcolor: 'rgba(0,0,0,0)',
         plot_bgcolor: 'rgba(0,0,0,0)',
-        font: { color: '#9CA3AF', family: 'Inter' },
+        font: { color: '#6b7280', family: 'Inter' },
         margin: { t: 10, r: 10, b: 40, l: 60 },
-        xaxis: { title: data.spectrum.x_label, gridcolor: 'rgba(255,255,255,0.05)' },
-        yaxis: { title: data.spectrum.y_label, gridcolor: 'rgba(255,255,255,0.05)' },
+        xaxis: { title: data.spectrum.x_label, gridcolor: 'rgba(0,0,0,0.05)' },
+        yaxis: { title: data.spectrum.y_label, gridcolor: 'rgba(0,0,0,0.05)' },
         shapes: shapes,
         showlegend: true
     };
