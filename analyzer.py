@@ -58,21 +58,23 @@ def process_nc_files(filepaths):
                     
                     img_data = np.nan_to_num(img_data, nan=0.0)
                     
-                    # Extract header properties
-                    ra = img_header.get('RA', img_header.get('CRVAL1', 'Unknown'))
-                    dec = img_header.get('DEC', img_header.get('CRVAL2', 'Unknown'))
+                    # Extract header properties (check both current HDU and Primary HDU)
+                    primary_header = hdul[0].header
                     
-                    freq = img_header.get('RESTFRQ', img_header.get('FREQ', 'Unknown'))
+                    ra = img_header.get('RA', primary_header.get('RA', img_header.get('CRVAL1', primary_header.get('CRVAL1', 'Unknown'))))
+                    dec = img_header.get('DEC', primary_header.get('DEC', img_header.get('CRVAL2', primary_header.get('CRVAL2', 'Unknown'))))
+                    
+                    freq = img_header.get('RESTFRQ', primary_header.get('RESTFRQ', img_header.get('FREQ', primary_header.get('FREQ', 'Unknown'))))
                     if freq != 'Unknown':
                         try:
                             freq = f"{float(freq) / 1e9:.3f} GHz"
                         except:
                             pass
                             
-                    obj = img_header.get('OBJECT', 'Unknown')
-                    telescope = img_header.get('TELESCOP', 'Unknown')
-                    instrument = img_header.get('INSTRUME', 'Unknown')
-                    date_obs = img_header.get('DATE-OBS', 'Unknown')
+                    obj = img_header.get('OBJECT', primary_header.get('OBJECT', 'Unknown'))
+                    telescope = img_header.get('TELESCOP', primary_header.get('TELESCOP', 'Unknown'))
+                    instrument = img_header.get('INSTRUME', primary_header.get('INSTRUME', 'Unknown'))
+                    date_obs = img_header.get('DATE-OBS', primary_header.get('DATE-OBS', 'Unknown'))
                     
                     return {
                         "type": "image",
