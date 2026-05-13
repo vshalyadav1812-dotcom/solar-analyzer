@@ -1,9 +1,9 @@
 :root {
-    --bg-base: #06080F;
-    --bg-mesh: radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
-               radial-gradient(at 50% 0%, hsla(225,39%,30%,0.2) 0, transparent 50%), 
-               radial-gradient(at 100% 0%, hsla(339,49%,30%,0.2) 0, transparent 50%);
-    --panel-bg: rgba(20, 25, 40, 0.4);
+    --bg-base: #1E293B; /* Lighter slate tone */
+    --bg-mesh: radial-gradient(at 0% 0%, hsla(253,16%,20%,1) 0, transparent 50%), 
+               radial-gradient(at 50% 0%, hsla(225,39%,45%,0.3) 0, transparent 50%), 
+               radial-gradient(at 100% 0%, hsla(339,49%,45%,0.3) 0, transparent 50%);
+    --panel-bg: rgba(51, 65, 85, 0.5); /* Lighter glass panels */
     --panel-border: rgba(255, 255, 255, 0.08);
     --text-main: #F3F4F6;
     --text-muted: #9CA3AF;
