@@ -68,10 +68,14 @@ async function handleFiles(fileList) {
         }
         if (data.error) throw new Error(data.error);
 
-        if (data.type === 'image') {
+        console.log("Backend Payload:", data);
+
+        if (data.type === 'image' || (data.image && data.image.z)) {
             renderImageResults(data);
-        } else {
+        } else if (data.spectrum && data.spectrum.wavelength) {
             renderResults(data);
+        } else {
+            throw new Error("Invalid payload format from backend. Missing 'spectrum' or 'image' data.");
         }
 
     } catch (error) {
@@ -88,12 +92,13 @@ function renderResults(data) {
     resultsSection.classList.remove('hidden');
 
     // Store state
-    currentWaveMin = data.spectrum.wavelength[0];
-    currentWaveMax = data.spectrum.wavelength[data.spectrum.wavelength.length - 1];
+    const waveArray = data?.spectrum?.wavelength || [];
+    currentWaveMin = waveArray.length > 0 ? waveArray[0] : 0;
+    currentWaveMax = waveArray.length > 0 ? waveArray[waveArray.length - 1] : 0;
 
     baseSpectrumTrace = {
-        x: data.spectrum.wavelength,
-        y: data.spectrum.irradiance,
+        x: waveArray,
+        y: data?.spectrum?.irradiance || [],
         mode: 'lines',
         line: { color: '#ffffff', width: 1.2 },
         name: 'Observation' // Base is white for contrast against shading
