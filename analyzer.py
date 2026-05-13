@@ -97,11 +97,18 @@ def process_nc_files(filepaths):
                     d_max = float(np.max(img_data))
                     d_mean = float(np.mean(img_data))
                     
+                    raw_header = {}
+                    for k, v in primary_header.items():
+                        if str(k).strip(): raw_header[str(k)] = str(v)
+                    for k, v in img_header.items():
+                        if str(k).strip(): raw_header[str(k)] = str(v)
+                    
                     return {
                         "type": "image",
                         "image": {
                             "z": img_data.tolist()
                         },
+                        "raw_header": raw_header,
                         "properties": {
                             "Observation": {
                                 "Object": str(obj),

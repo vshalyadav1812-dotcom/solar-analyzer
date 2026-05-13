@@ -303,6 +303,38 @@ function renderImageResults(data) {
         groupContainer.appendChild(list);
         propsDiv.appendChild(groupContainer);
     }
+    
+    // Add Raw Header Toggle
+    if (data.raw_header) {
+        const rawContainer = document.createElement('div');
+        rawContainer.style.background = 'rgba(0,0,0,0.02)';
+        rawContainer.style.padding = '1rem';
+        rawContainer.style.borderRadius = '12px';
+        rawContainer.style.border = '1px solid var(--panel-border)';
+        rawContainer.style.gridColumn = '1 / -1'; // Span full width
+        
+        const details = document.createElement('details');
+        details.innerHTML = `<summary style="cursor: pointer; font-family: var(--font-heading); color: var(--accent-glow); font-size: 1.05rem; font-weight: 600;">View Raw FITS Header</summary>`;
+        
+        const pre = document.createElement('pre');
+        pre.style.marginTop = '1rem';
+        pre.style.padding = '1rem';
+        pre.style.background = '#0b0b0c';
+        pre.style.color = '#10B981';
+        pre.style.borderRadius = '8px';
+        pre.style.fontSize = '0.85rem';
+        pre.style.overflowX = 'auto';
+        pre.style.fontFamily = 'monospace';
+        
+        let headerText = '';
+        for (const [k, v] of Object.entries(data.raw_header)) {
+            headerText += `${k.padEnd(8, ' ')} = ${v}\n`;
+        }
+        pre.textContent = headerText;
+        details.appendChild(pre);
+        rawContainer.appendChild(details);
+        propsDiv.appendChild(rawContainer);
+    }
 }
 
 function updateDS9(isInitial = false) {
