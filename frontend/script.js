@@ -20,6 +20,9 @@ let baseSpectrumTrace = null;
 let currentImageData = null;
 let currentImageP5 = null;
 let currentImageP99 = null;
+let currentStepX = 1;
+let currentStepY = 1;
+let currentWCS = null;
 
 ['dragover', 'dragleave', 'drop'].forEach(evt => {
     dropZone.addEventListener(evt, e => e.preventDefault(), false);
@@ -282,6 +285,9 @@ function renderImageResults(data) {
     currentImageData = data.image.z;
     currentImageP5 = data.image.p5;
     currentImageP99 = data.image.p99;
+    currentStepX = data.image.step_x;
+    currentStepY = data.image.step_y;
+    currentWCS = data.wcs;
     
     // Initial Render
     updateDS9(true);
@@ -364,7 +370,10 @@ function updateDS9(isInitial = false) {
         
         stretchedZ = currentImageData.map(row => row.map(v => v > 0 ? Math.log10(v) : Math.log10(minZ)));
     } else if (stretch === 'Sqrt') {
-        stretchedZ = currentImageData.map(row => row.map(v => v > 0 ? Math.sqrt(v) : 0));
+        stretchedZ = currentImageData.map(row => row.map(v => v !== null && v > 0 ? Math.sqrt(v) : 0));
+    } else if (stretch === 'Asinh') {
+        const a = currentImageP5 > 0 ? currentImageP5 : 1e-9;
+        stretchedZ = currentImageData.map(row => row.map(v => v !== null ? Math.asinh(v / a) : null));
     }
     
     const trace = {
@@ -401,10 +410,31 @@ function updateDS9(isInitial = false) {
         const myPlot = document.getElementById('image-plot');
         myPlot.on('plotly_hover', function(data){
             const pt = data.points[0];
-            const x = pt.x;
-            const y = pt.y;
-            const originalVal = currentImageData[y] && currentImageData[y][x] !== undefined ? currentImageData[y][x] : pt.z;
-            document.getElementById('pixel-probe').innerHTML = `<span>X: ${x} | Y: ${y}</span><span>Value: ${originalVal.toExponential(4)}</span><span>Probe Active</span>`;
+            const x = Math.round(pt.x);
+            const y = Math.round(pt.y);
+            const originalVal = currentImageData[y] && currentImageData[y][x] !== null ? currentImageData[y][x] : null;
+            const valStr = originalVal !== null ? originalVal.toExponential(4) : "NaN";
+            
+            let raDecStr = "WCS Unavailable";
+            if (currentWCS) {
+                // Pixel to World transform (1-indexed for FITS, adjusted for downsampling)
+                const origX = (x * currentStepX) + 1;
+                const origY = (y * currentStepY) + 1;
+                
+                const dx = origX - currentWCS.crpix[0];
+                const dy = origY - currentWCS.crpix[1];
+                
+                // PC matrix multiplication
+                const pc1 = currentWCS.pc[0][0] * dx + currentWCS.pc[0][1] * dy;
+                const pc2 = currentWCS.pc[1][0] * dx + currentWCS.pc[1][1] * dy;
+                
+                const ra = currentWCS.crval[0] + pc1 * currentWCS.cdelt[0];
+                const dec = currentWCS.crval[1] + pc2 * currentWCS.cdelt[1];
+                
+                raDecStr = `RA: ${ra.toFixed(5)} | DEC: ${dec.toFixed(5)}`;
+            }
+            
+            document.getElementById('pixel-probe').innerHTML = `<span>X: ${x} | Y: ${y}</span><span>${raDecStr}</span><span>Value: ${valStr}</span>`;
         });
         myPlot.on('plotly_unhover', function(data){
             document.getElementById('pixel-probe').innerHTML = `<span>X: -- | Y: --</span><span>Value: --</span><span>Probe Ready</span>`;

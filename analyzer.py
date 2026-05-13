@@ -3,6 +3,31 @@ import numpy as np
 import scipy.signal
 from astropy.modeling.models import BlackBody
 from astropy import units as u
+from astropy.wcs import WCS
+from pydantic import BaseModel
+from typing import List, Dict, Optional, Any
+
+class FITSImageWCS(BaseModel):
+    crval: List[float]
+    crpix: List[float]
+    cdelt: List[float]
+    pc: List[List[float]]
+
+class FITSImageData(BaseModel):
+    z: List[List[Optional[float]]]
+    p5: float
+    p99: float
+    step_x: int
+    step_y: int
+
+class FITSImageResponse(BaseModel):
+    schema_version: str = "2.3"
+    type: str = "image"
+    cube_warning: Optional[str] = None
+    image: FITSImageData
+    raw_header: Dict[str, str]
+    properties: Dict[str, Dict[str, str]]
+    wcs: Optional[FITSImageWCS] = None
 
 KNOWN_LINES = [
     {"element": "Lyman Alpha", "wave": 121.57, "type": "Emission (Quasar)"},
@@ -47,6 +72,8 @@ def process_nc_files(filepaths):
                                 is_image = True
                                 break
                 cube_warning = None
+                step_x = 1
+                step_y = 1
                 if is_image:
                     shape = img_data.shape
                     if img_data.ndim > 2:
@@ -112,17 +139,33 @@ def process_nc_files(filepaths):
                     z_list = img_data.tolist()
                     z_clean = [[None if np.isnan(val) or np.isinf(val) else val for val in row] for row in z_list]
                     
-                    return {
-                        "schema_version": "2.2",
-                        "type": "image",
-                        "cube_warning": cube_warning,
-                        "image": {
-                            "z": z_clean,
-                            "p5": p5,
-                            "p99": p99
-                        },
-                        "raw_header": raw_header,
-                        "properties": {
+                    wcs_params = None
+                    try:
+                        w = WCS(img_header)
+                        # Handle cases where PC matrix might be CD matrix or missing
+                        if hasattr(w.wcs, 'pc'):
+                            pc_mat = w.wcs.pc.tolist()
+                        elif hasattr(w.wcs, 'cd'):
+                            pc_mat = w.wcs.cd.tolist()
+                        else:
+                            pc_mat = [[1.0, 0.0], [0.0, 1.0]]
+                            
+                        wcs_params = {
+                            "crval": w.wcs.crval.tolist(),
+                            "crpix": w.wcs.crpix.tolist(),
+                            "cdelt": w.wcs.cdelt.tolist(),
+                            "pc": pc_mat
+                        }
+                    except Exception as e:
+                        print("WCS Extraction Error:", e)
+                    
+                    response_obj = FITSImageResponse(
+                        schema_version="2.3",
+                        cube_warning=cube_warning,
+                        image=FITSImageData(z=z_clean, p5=p5, p99=p99, step_x=step_x, step_y=step_y),
+                        raw_header=raw_header,
+                        wcs=FITSImageWCS(**wcs_params) if wcs_params else None,
+                        properties={
                             "Observation": {
                                 "Object": str(obj),
                                 "Telescope": str(telescope),
@@ -153,7 +196,8 @@ def process_nc_files(filepaths):
                                 "Data Max": f"{d_max:.4e}"
                             }
                         }
-                    }
+                    )
+                    return response_obj.dict()
         except Exception as e:
             print("Image processing error:", e)
             pass # Fall back to spectrum processing if image extraction fails
