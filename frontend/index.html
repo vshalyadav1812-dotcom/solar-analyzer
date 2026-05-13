@@ -249,6 +249,23 @@
                 <br>
                 <h3>Kinematics (Redshift)</h3>
                 <p class="text-sm">When matching solar absorption drops to laboratory "rest" values, any shifting $\Delta \lambda$ indicates the physical speed of the astronomical object via Doppler processing. $z = \Delta \lambda / \lambda_{rest}$. Positive velocity means the star is receding.</p>
+                <hr style="border: 0; border-top: 1px solid rgba(0,0,0,0.1); margin: 2rem 0;">
+                <h2>FITS Image Analysis & Statistics</h2>
+                <br>
+                <h3>What is Aperture Photometry?</h3>
+                <p class="text-sm">Aperture photometry is a core astronomical technique used to measure the light (flux) emitted by a celestial object (like a star or galaxy). By drawing a shape (aperture) around the source, we can isolate its pixels from the background sky.</p>
+                <br>
+                <h3>Sum (Total Flux)</h3>
+                <p class="text-sm">The <strong>Sum</strong> represents the total integrated intensity of all valid pixels within your drawn aperture. In scientifically calibrated FITS files, this value directly correlates to the actual energy received by the telescope from that specific object.</p>
+                <br>
+                <h3>Mean & RMS (Root Mean Square)</h3>
+                <p class="text-sm">The <strong>Mean</strong> is the average pixel value within the region, commonly used to estimate the background "sky level" when drawn over an empty patch of space. The <strong>RMS</strong> measures the standard deviation (noise or variance) of those pixels. Comparing an object's peak flux to the background RMS yields its Signal-to-Noise Ratio (SNR).</p>
+                <br>
+                <h3>Percentile Stretching (P5–P99)</h3>
+                <p class="text-sm">Astronomical images often contain extreme values (like dead pixels reading 0, or cosmic ray hits reading 1,000,000). Standard Min/Max scaling is easily ruined by these outliers. By clamping the color scale to the 5th and 99th percentiles (<strong>P5–P99</strong>), we mathematically ignore the extreme noise and maximize the visual contrast of the true astrophysical structures.</p>
+                <br>
+                <h3>Asinh Stretch</h3>
+                <p class="text-sm">Unlike a Linear stretch (which loses faint nebulosity) or a Log stretch (which washes out bright cores), the <strong>Inverse Hyperbolic Sine (Asinh)</strong> stretch is uniquely suited for astronomy. It behaves linearly for faint pixel values but logarithmically for bright ones, allowing you to see faint gas filaments and a blinding galactic core simultaneously.</p>
             </div>
         </div>
 
